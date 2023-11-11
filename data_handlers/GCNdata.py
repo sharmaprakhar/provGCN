@@ -1,17 +1,25 @@
 import numpy as np
 import torch
 import scipy.sparse as sp
-from dataloader import DataLoader
+from data_handlers.dataloader import DataLoader
 from collections import defaultdict
 
 class GCNData(DataLoader):
     def __init__(self, params):
         super().__init__(params)
-        self.adj_norm_scheme = params['adj_norm_scheme']
+        self.params = params
+        self.adj_norm_scheme = self.params['adj_norm_scheme']
         self.make_adj_matrices_list()
         self.normalize_adj_matrices_list()
-        # no reorder for sparse tensors required
+        self.create_KG_dict()
+        self.params['logger'].info('Created normalized adjacency matrices for the KG')
+        self.params['logger'].info('Composite A_in is a sum of all normalized adj matrices (itneraction + KG)')
+        self.preprocess_norm_matrices()
+        # no reorder for sparse tensors required for pytorch
 
+    def preprocess_norm_matrices(self):
+        for i in self.norm_adj_matrices:
+            print(i.shape)
 
     def create_KG_dict(self):
         self.master_h_to_tr_mapping = defaultdict(list)
@@ -28,7 +36,7 @@ class GCNData(DataLoader):
         self.total_heads = len(self.heads_list)
 
 
-    def normalized_adj_matrices(self):
+    def normalize_adj_matrices_list(self):
         '''
         This is the KGAT implementation based on symmetric and random walk
         laplacian matrices. They also call them bi normalized or si-norm adj matrices
@@ -52,9 +60,9 @@ class GCNData(DataLoader):
             return norm_adj.tocoo()
 
         if self.adj_norm_scheme=='random_walk':
-            self.norm_adj_matrices = [rand_walk_norm(adj) for adj in self.all_adj_matrices]
+            self.norm_adj_matrices = [rand_walk_norm(adj) for adj in self.adj_mat_list]
         elif self.adj_norm_scheme=='symmetric':
-            self.norm_adj_matrices = [symmetric_norm(adj) for adj in self.all_adj_matrices]
+            self.norm_adj_matrices = [symmetric_norm(adj) for adj in self.adj_mat_list]
 
 
 
@@ -80,7 +88,7 @@ class GCNData(DataLoader):
 
         return a_adj, b_adj
 
-    def get_relational_adj_list(self, add_inv=0):
+    def make_adj_matrices_list(self, add_inv=False):
         '''
         create adjacency lists for interaction data and knowledge graph
         The reverse direction adj matrices are disabled right now, turn on by 
@@ -101,6 +109,7 @@ class GCNData(DataLoader):
             self.adj_relations_list.append(1)
         #handle KG
         for r,mat in self.kg_data.relations_dict.items():
+            mat = np.array(mat)
             r_adj, inv_r_adj = self.make_sparse_adj_list(mat)
             self.adj_mat_list.append(r_adj)
             self.adj_relations_list.append(r+1)

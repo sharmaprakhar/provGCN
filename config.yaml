@@ -1,6 +1,2 @@
-paths:
-  dataset_dir: ./e3_trace
-params:
-  adj_norm_scheme: symmetric
-  contamination: 0.03
-  dimensionality_reduction: true
+dataset_dir: ../examples
+adj_norm_scheme: symmetric

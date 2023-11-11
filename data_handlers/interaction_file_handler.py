@@ -20,12 +20,14 @@ class InteractionsHandler:
         with open(self.interaction_file, 'r') as fr:
             line = fr.readline()
             while line:
-                line = line.strip.split(' ')
+                line = line.strip().split(' ')
                 line = list(map(int, line))
                 start_node, end_nodes = line[0], line[1:]
                 for node in end_nodes:
                     interaction_dict[start_node].add(node)
                     interaction_matrix.add((start_node, node))
+                line = fr.readline()
+
         # convert set of tuples to np array
         interaction_matrix = np.array([[item for item in pair] for pair in interaction_matrix])
         num_total_interactions = interaction_matrix.shape[0]
